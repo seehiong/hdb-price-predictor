@@ -1,0 +1,7 @@
+# requirements.txt
+streamlit==1.33.0
+requests==2.31.0
+pandas==2.1.4
+numpy==1.24.4
+scikit-learn==1.6.1
+joblib==1.4.2
