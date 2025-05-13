@@ -20,8 +20,8 @@ header {visibility: hidden;}
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # --- Configuration ---
-KSERVE_URL = os.environ.get("KSERVE_URL", "http://hdb-resale-xgb.kubeflow-user-example-com.svc.cluster.local/v2/models/hdb-resale-xgb/infer")
-KSERVE_HOST = os.environ.get("KSERVE_HOST", "")
+KSERVE_URL = os.environ.get("KSERVE_URL", "http://140.245.54.38:80/v2/models/hdb-resale-xgb/infer")
+KSERVE_HOST = os.environ.get("KSERVE_HOST", "hdb-resale-xgb-kserve-test.example.com")
 SCALER_PATH = "scaler.joblib"
 
 # Feature names in the EXACT order the model expects
