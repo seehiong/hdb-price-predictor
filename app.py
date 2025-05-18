@@ -265,7 +265,7 @@ with st.container():
     st.markdown(f"""
     <div class="info-box">
         <p><strong>Model:</strong> {MODEL_TYPE} | <strong>Data Last Updated:</strong> {DATA_INGESTION_DATE}</p>
-        <p>This predictor estimates HDB resale prices based on historical transaction data.</p>
+        <p><strong>Powered by AI, this cutting-edge predictor leverages an XGBoost model trained on extensive historical resale transaction records to estimate HDB resale prices with precision.</strong></p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -293,6 +293,20 @@ if selected_page_from_menu != st.session_state.active_page:
     st.rerun()
 
 if st.session_state.active_page == PAGE_OPTIONS_LIST[0]: # "Make Prediction"
+
+    st.markdown('<h2 class="sub-header">Expected Sale Date</h2>', unsafe_allow_html=True)
+    sale_date_col1, sale_date_col2 = st.columns(2) # Use columns for year and month to keep them neat
+    with sale_date_col1:
+        try:
+            default_year_idx = FUTURE_YEARS.index(current_date.year)
+        except ValueError:
+            default_year_idx = len(FUTURE_YEARS) // 2
+        selected_year = st.selectbox("Year", FUTURE_YEARS, index=default_year_idx, key="sale_year_select") # Added key
+    with sale_date_col2:
+        selected_month = st.selectbox("Month", MONTHS, index=current_date.month -1, key="sale_month_select") # Added key
+    
+    st.markdown("---")
+    
     col1, col2 = st.columns([1, 1])
     with col1:
         st.markdown('<h2 class="sub-header">Property Details</h2>', unsafe_allow_html=True)
@@ -309,16 +323,6 @@ if st.session_state.active_page == PAGE_OPTIONS_LIST[0]: # "Make Prediction"
             help="Enter the year the flat's 99-year lease started.", key="lease_year_input"
         )
         storey = st.number_input("Storey (Average)", min_value=1.0, max_value=50.0, value=10.0, step=1.0)
-        st.markdown("##### Expected Sale Date")
-        col_year, col_month = st.columns(2)
-        
-        try:
-            default_year_idx = FUTURE_YEARS.index(current_date.year)
-        except ValueError:
-            default_year_idx = len(FUTURE_YEARS) // 2
-
-        with col_year: selected_year = st.selectbox("Year", FUTURE_YEARS, index=default_year_idx)
-        with col_month: selected_month = st.selectbox("Month", MONTHS, index=current_date.month -1)
 
     with col2:
         st.markdown('<h2 class="sub-header">Location & Type</h2>', unsafe_allow_html=True)
