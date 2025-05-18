@@ -5,3 +5,4 @@ pandas==2.1.4
 numpy==1.26.4
 scikit-learn==1.6.1
 joblib==1.4.2
+streamlit-option-menu==0.3.6
