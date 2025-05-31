@@ -1,9 +1,9 @@
 # requirements.txt
 streamlit==1.33.0
-numpy==1.24.4
+numpy==1.26.4
 pandas==2.1.4
 joblib==1.4.2
 xgboost==2.1.4
 scikit-learn==1.6.1
 streamlit-option-menu==0.3.6
-rich<14.0.0,>=10.14.0
+rich==13.7.1
