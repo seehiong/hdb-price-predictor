@@ -6,3 +6,4 @@ joblib==1.4.2
 xgboost==2.1.4
 scikit-learn==1.6.1
 streamlit-option-menu==0.3.6
+rich<14.0.0,>=10.14.0
