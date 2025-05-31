@@ -1,6 +1,5 @@
 # app.py
 import streamlit as st
-import requests
 import numpy as np
 import pandas as pd
 import joblib
@@ -9,6 +8,9 @@ import json
 import warnings
 from datetime import datetime, timedelta
 from streamlit_option_menu import option_menu
+
+# XGBoost import
+import xgboost as xgb
 
 warnings.filterwarnings("ignore", category=UserWarning, message=".*Calling st.rerun().*")
 
@@ -24,6 +26,7 @@ if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 
 PAGE_OPTIONS_LIST = ["Make Prediction", "Transaction Map", "About"]
+DATA_INGESTION_DATE = "31-05-2025"
 
 if 'active_page' not in st.session_state:
     st.session_state.active_page = PAGE_OPTIONS_LIST[0]
@@ -159,6 +162,7 @@ div[data-testid="stOptionMenu"] button {{
     border-bottom: 2px solid transparent; 
     border-radius: 0 !important; 
     margin-right: 2px; 
+    padding: 10px 15px;
 }}
 div[data-testid="stOptionMenu"] button:hover {{
     color: {colors['primary']} !important; 
@@ -170,6 +174,9 @@ div[data-testid="stOptionMenu"] button[aria-selected="true"] {{
     font-weight: bold;
 }}
 @media (max-width: 768px) {{
+    .stApp {{ padding: 10px; }}
+    .main-header {{ font-size: 24px !important; }}
+    .sub-header {{ font-size: 18px !important; }}
     .mobile-return-button-container {{
         position: fixed; bottom: 20px; right: 20px; z-index: 10000;
     }}
@@ -182,6 +189,23 @@ div[data-testid="stOptionMenu"] button[aria-selected="true"] {{
     .mobile-return-button-container div[data-testid="stButton"] > button:hover {{
         background-color: {colors['secondary']} !important;
     }}
+    div[data-testid="stOptionMenu"] {{
+        display: flex !important;
+        flex-wrap: wrap !important; 
+        justify-content: space-around !important; 
+        width: 100% !important;
+        padding-bottom: 5px;
+    }}
+    div[data-testid="stOptionMenu"] button {{
+        font-size: 0.8rem !important;
+        padding: 8px 5px !important;
+        margin: 2px !important; 
+        flex-grow: 1;
+        flex-basis: auto;
+        min-width: calc(33% - 10px);
+        text-align: center;
+        line-height: 1.2;
+    }}
 }}
 @media (min-width: 769px) {{
     .mobile-return-button-container {{ display: none; }}
@@ -191,17 +215,39 @@ div[data-testid="stOptionMenu"] button[aria-selected="true"] {{
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # --- Configuration & Helper Functions ---
-KSERVE_URL = "http://140.245.54.38:80/v2/models/hdb-resale-price-xgb/infer"
-KSERVE_HOST = "hdb-resale-price-xgb-kserve-test.example.com"
 SCALER_PATH = "scaler.joblib"
 POSTAL_DATA_PATH = "postal_data.json"
-MODEL_TYPE = "XGBoost"
-DATA_INGESTION_DATE = "18-05-2025"
+MODEL_LOCAL_PATH = "model.bst"
+MODEL_TYPE = "XGBoost (Locally Loaded)"
 FEATURE_NAMES = ['floor_area_sqm', 'postal', 'storey_avg', 'sale_year', 'sale_month', 'remaining_lease_years', 'flat_type_1 ROOM', 'flat_type_2 ROOM', 'flat_type_3 ROOM', 'flat_type_4 ROOM', 'flat_type_5 ROOM', 'flat_type_EXECUTIVE', 'flat_type_MULTI-GENERATION', 'flat_model_2-ROOM', 'flat_model_3GEN', 'flat_model_ADJOINED FLAT', 'flat_model_APARTMENT', 'flat_model_DBSS', 'flat_model_IMPROVED', 'flat_model_IMPROVED-MAISONETTE', 'flat_model_MAISONETTE', 'flat_model_MODEL A', 'flat_model_MODEL A-MAISONETTE', 'flat_model_MODEL A2', 'flat_model_MULTI GENERATION', 'flat_model_NEW GENERATION', 'flat_model_PREMIUM APARTMENT', 'flat_model_PREMIUM APARTMENT LOFT', 'flat_model_PREMIUM MAISONETTE', 'flat_model_SIMPLIFIED', 'flat_model_STANDARD', 'flat_model_TERRACE', 'flat_model_TYPE S1', 'flat_model_TYPE S2', 'town_ANG MO KIO', 'town_BEDOK', 'town_BISHAN', 'town_BUKIT BATOK', 'town_BUKIT MERAH', 'town_BUKIT PANJANG', 'town_BUKIT TIMAH', 'town_CENTRAL AREA', 'town_CHOA CHU KANG', 'town_CLEMENTI', 'town_GEYLANG', 'town_HOUGANG', 'town_JURONG EAST', 'town_JURONG WEST', 'town_KALLANG/WHAMPOA', 'town_MARINE PARADE', 'town_PASIR RIS', 'town_PUNGGOL', 'town_QUEENSTOWN', 'town_SEMBAWANG', 'town_SENGKANG', 'town_SERANGOON', 'town_TAMPINES', 'town_TOA PAYOH', 'town_WOODLANDS', 'town_YISHUN']
 
 if len(FEATURE_NAMES) != 60:
     st.error(f"Feature count mismatch! Expected 60 but got {len(FEATURE_NAMES)}")
 NUM_FEATURES = len(FEATURE_NAMES)
+
+
+@st.cache_resource
+def load_xgboost_model_local():
+    try:
+        if not os.path.exists(MODEL_LOCAL_PATH):
+            st.error(f"Model file not found at {MODEL_LOCAL_PATH}. Please ensure it's in the same directory as app.py.")
+            return None
+        
+        xgb_model = xgb.Booster()
+        xgb_model.load_model(MODEL_LOCAL_PATH)
+        
+        # Optional: Debug model features
+        try:
+            num_model_features = xgb_model.num_features()
+            if num_model_features != NUM_FEATURES:
+                st.warning(f"Model feature count ({num_model_features}) does not match expected ({NUM_FEATURES}). This WILL cause errors.")
+        except Exception as e_feat:
+            st.warning(f"DEBUG: Could not get feature count from model: {e_feat}")
+
+        return xgb_model
+    except Exception as e:
+        st.error(f"Error loading local XGBoost model ({MODEL_LOCAL_PATH}): {e}")
+        return None
 
 def extract_categories(prefix, feature_list):
     categories = [feature[len(prefix):] for feature in feature_list if feature.startswith(prefix)]
@@ -222,21 +268,32 @@ def sqft_to_sqm(sqft): return sqft / 10.7639
 
 @st.cache_resource
 def load_scaler():
-    try: return joblib.load(SCALER_PATH)
-    except Exception as e: st.error(f"Error loading scaler: {e}"); st.stop()
+    try:
+        if not os.path.exists(SCALER_PATH):
+            st.error(f"Scaler file not found at {SCALER_PATH}. Please ensure it's in the same directory as app.py.")
+            st.stop() 
+        return joblib.load(SCALER_PATH)
+    except Exception as e: st.error(f"Error loading scaler ({SCALER_PATH}): {e}"); st.stop()
 
 @st.cache_resource
 def load_postal_data():
     try:
+        if not os.path.exists(POSTAL_DATA_PATH):
+            st.error(f"Postal data file not found at {POSTAL_DATA_PATH}. Please ensure it's in the same directory as app.py.")
+            return {} 
         with open(POSTAL_DATA_PATH, 'r') as f: return json.load(f)
-    except Exception as e: st.error(f"Error loading postal data: {e}"); return {}
+    except Exception as e: st.error(f"Error loading postal data ({POSTAL_DATA_PATH}): {e}"); return {}
 
+# --- Load resources ---
 scaler = load_scaler()
 postal_data = load_postal_data()
+xgb_model_loaded = load_xgboost_model_local() 
 
 def validate_postal_code(postal_code):
     if not postal_code or not postal_code.isdigit() or len(postal_code) != 6:
         return None, "Please enter a valid 6-digit postal code."
+    if not postal_data:
+        return None, "Postal code database not loaded. Cannot validate."
     if postal_code not in postal_data:
         return None, f"Postal code {postal_code} not found in our database."
     return postal_data[postal_code][0], None
@@ -295,15 +352,15 @@ if selected_page_from_menu != st.session_state.active_page:
 if st.session_state.active_page == PAGE_OPTIONS_LIST[0]: # "Make Prediction"
 
     st.markdown('<h2 class="sub-header">Expected Sale Date</h2>', unsafe_allow_html=True)
-    sale_date_col1, sale_date_col2 = st.columns(2) # Use columns for year and month to keep them neat
+    sale_date_col1, sale_date_col2 = st.columns(2) 
     with sale_date_col1:
         try:
             default_year_idx = FUTURE_YEARS.index(current_date.year)
         except ValueError:
             default_year_idx = len(FUTURE_YEARS) // 2
-        selected_year = st.selectbox("Year", FUTURE_YEARS, index=default_year_idx, key="sale_year_select") # Added key
+        selected_year = st.selectbox("Year", FUTURE_YEARS, index=default_year_idx, key="sale_year_select") 
     with sale_date_col2:
-        selected_month = st.selectbox("Month", MONTHS, index=current_date.month -1, key="sale_month_select") # Added key
+        selected_month = st.selectbox("Month", MONTHS, index=current_date.month -1, key="sale_month_select") 
     
     st.markdown("---")
     
@@ -360,7 +417,7 @@ if st.session_state.active_page == PAGE_OPTIONS_LIST[0]: # "Make Prediction"
             selected_town_manual = st.selectbox("Town", TOWNS, index=current_selection_index, key="town_active")
             if st.session_state.selected_town != selected_town_manual:
                  st.session_state.selected_town = selected_town_manual
-            postal_code = None
+            postal_code = None # Ensure postal code is None if not using postal toggle
 
         selected_flat_type = st.selectbox("Flat Type", FLAT_TYPES, index=FLAT_TYPES.index("4 ROOM") if "4 ROOM" in FLAT_TYPES else 0)
         selected_flat_model = st.selectbox("Flat Model", FLAT_MODELS, index=FLAT_MODELS.index("IMPROVED") if "IMPROVED" in FLAT_MODELS else 0)
@@ -373,12 +430,14 @@ if st.session_state.active_page == PAGE_OPTIONS_LIST[0]: # "Make Prediction"
     if predict_button:
         if use_postal and st.session_state.postal_validation_error:
             st.error("Please enter a valid postal code before making a prediction.")
-        elif use_postal and not postal_code:
+        elif use_postal and not postal_code: 
              st.error("Postal code is enabled but not entered. Please enter a postal code.")
         elif not st.session_state.selected_town and not use_postal:
              st.error("Please select a town.")
-        elif not st.session_state.selected_town and use_postal and not postal_code:
+        elif not st.session_state.selected_town and use_postal and not postal_code: 
             st.error("Please enter a postal code so town can be auto-filled.")
+        elif xgb_model_loaded is None: 
+            st.error("Model is not available. Prediction cannot be made. Please ensure 'model.bst' is in the correct location and check application logs.")
         else:
             with st.spinner("Analyzing market data..."):
                 lease_commencement_year_value = st.session_state.lease_commencement_year
@@ -387,7 +446,7 @@ if st.session_state.active_page == PAGE_OPTIONS_LIST[0]: # "Make Prediction"
         
                 input_values = {
                     'floor_area_sqm': float(floor_area),
-                    'postal': float(postal_code) if postal_code and postal_code.isdigit() else 0.0,
+                    'postal': float(postal_code) if postal_code and postal_code.isdigit() else 0.0, 
                     'remaining_lease_years': float(calculated_remaining_lease_years),
                     'storey_avg': float(storey),
                     'sale_year': float(selected_year),
@@ -398,7 +457,7 @@ if st.session_state.active_page == PAGE_OPTIONS_LIST[0]: # "Make Prediction"
                     if key in final_input_for_model: final_input_for_model[key] = value
 
                 town_to_use = st.session_state.selected_town
-                if not town_to_use:
+                if not town_to_use: 
                     st.error("Town information is missing. Cannot proceed.")
                     st.stop()
 
@@ -410,20 +469,22 @@ if st.session_state.active_page == PAGE_OPTIONS_LIST[0]: # "Make Prediction"
                     feature_name = f"{prefix}{selected_val}"
                     if feature_name in final_input_for_model:
                         final_input_for_model[feature_name] = 1.0
-                    else: st.warning(f"Selected value '{selected_val}' (feature: {feature_name}) not in model's FEATURE_NAMES.")
+                    else: st.warning(f"Selected value '{selected_val}' (feature: {feature_name}) not in model's FEATURE_NAMES. This may affect prediction accuracy.")
                 
                 try:
                     input_list = [final_input_for_model[feature] for feature in FEATURE_NAMES]
                     input_df = np.array(input_list).astype(np.float32).reshape(1, -1)
-                    input_scaled = scaler.transform(input_df)
-                    payload = {"inputs": [{"name": "input-0", "shape": [1, NUM_FEATURES], "datatype": "FP32", "data": input_scaled.flatten().tolist()}]}
-                    headers = {"Content-Type": "application/json"}
-                    if KSERVE_HOST: headers["Host"] = KSERVE_HOST
+                    
+                    if input_df.shape[1] != NUM_FEATURES:
+                        st.error(f"Critical error: Input feature count ({input_df.shape[1]}) does not match model expectation ({NUM_FEATURES}).")
+                        st.stop()
 
-                    response = requests.post(KSERVE_URL, headers=headers, json=payload, timeout=30)
-                    response.raise_for_status()
-                    result = response.json()
-                    prediction = result.get('outputs', [{}])[0].get('data', [None])[0]
+                    input_scaled = scaler.transform(input_df)
+                    
+                    dtest = xgb.DMatrix(input_scaled, feature_names=FEATURE_NAMES if xgb_model_loaded.num_features() == NUM_FEATURES else None) 
+                    
+                    prediction_array = xgb_model_loaded.predict(dtest)
+                    prediction = float(prediction_array[0]) if prediction_array is not None and len(prediction_array) > 0 else None
 
                     if prediction is not None:
                         st.markdown(f"""
@@ -447,11 +508,13 @@ if st.session_state.active_page == PAGE_OPTIONS_LIST[0]: # "Make Prediction"
                                 if postal_code: st.write(f"• Postal Code: {postal_code}")
                                 st.write(f"• Flat Type: {selected_flat_type}")
                                 st.write(f"• Flat Model: {selected_flat_model}")
-                    else: st.error("Prediction data not found in the response.")
-                except requests.exceptions.Timeout: st.error("Request timed out.")
-                except requests.exceptions.ConnectionError: st.error("Could not connect to prediction service.")
-                except requests.exceptions.HTTPError as e: st.error(f"Prediction service error: {e.response.status_code} - {e.response.text}")
-                except Exception as e: st.error(f"An error occurred during prediction: {e}")
+                    else: 
+                        st.error("Prediction data could not be generated by the local model.")
+                except xgb.core.XGBoostError as xgb_e:
+                    st.error(f"XGBoost prediction error: {xgb_e}")
+                  
+                except Exception as e:
+                    st.error(f"An error occurred during prediction: {e}")
 
 elif st.session_state.active_page == PAGE_OPTIONS_LIST[1]: # "Transaction Map"
     st.markdown('<h2 class="sub-header">HDB Resale Transaction Map</h2>', unsafe_allow_html=True)
@@ -464,7 +527,7 @@ elif st.session_state.active_page == PAGE_OPTIONS_LIST[1]: # "Transaction Map"
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("""
     <div class="iframe-container">
-        <iframe src="https://axmbarc6hpai.objectstorage.ap-singapore-2.oci.customer-oci.com/n/axmbarc6hpai/b/nn-bucket/o/hdb_model_for_kserve%2Fhdb_resale_price_map_clickable.html" 
+        <iframe src="https://seehiong.github.io/app/hdb_resale_price_map_clickable.html" 
             style="width: 100%; height: 800px; border: none;" allow="geolocation"></iframe>
     </div>
     <script> 
