@@ -26,7 +26,7 @@ if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 
 PAGE_OPTIONS_LIST = ["Make Prediction", "Transaction Map", "About"]
-DATA_INGESTION_DATE = "31-05-2025"
+DATA_INGESTION_DATE = "16-06-2025"
 
 if 'active_page' not in st.session_state:
     st.session_state.active_page = PAGE_OPTIONS_LIST[0]

@@ -2831,6 +2831,12 @@
             "lease_commence_date": "1970"
         }
     ],
+    "141030": [
+        {
+            "town": "QUEENSTOWN",
+            "lease_commence_date": "2022"
+        }
+    ],
     "141041": [
         {
             "town": "QUEENSTOWN",
@@ -40086,6 +40092,12 @@
         }
     ],
     "652463": [
+        {
+            "town": "BUKIT BATOK",
+            "lease_commence_date": "2021"
+        }
+    ],
+    "652464": [
         {
             "town": "BUKIT BATOK",
             "lease_commence_date": "2021"
