@@ -1,0 +1,40 @@
+# Antigravity local agent configurations
+.agents/
+
+# Pipeline raw datasets (ignore large GeoJSONs & CSVs, track lightweight web lookup dictionaries)
+pipeline_public/data/*
+!pipeline_public/data/hdb_postal_data.json
+!pipeline_public/data/hdb_mrt_proximity.json
+# OneMap postal lookups: ~1.3 MB, no credentials, and rebuilding it means a
+# multi-hour rate-limited crawl. Committing it makes a clone cheap.
+!pipeline_public/data/.onemap_postal_cache.json
+pipeline_private/data/*
+!pipeline_private/data/condo_postal_data.json
+!pipeline_private/data/private_resi_transactions.csv
+!pipeline_private/data/bca_mcst_registry.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Environment variables
+.env
+.env.local
+
+# Streamlit
+.streamlit/secrets.toml
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db

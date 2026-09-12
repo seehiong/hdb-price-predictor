@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Singapore Property Price Predictor | In-Browser AI Engine</title>
+  <meta name="description" content="Instant in-browser machine learning predictor for Singapore HDB resale flats and private non-landed homes (condominiums, apartments and executive condominiums). Powered by client-side XGBoost. Zero server cold starts, 100% free and offline-capable.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏙️</text></svg>">
+</head>
+<body>
+  <div class="ambient-glow-1"></div>
+  <div class="ambient-glow-2"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-container">
+        <div class="brand-icon">🏙️</div>
+        <div>
+          <h1 class="brand-title">Singapore Property Price Predictor</h1>
+          <p class="brand-tagline">Client-Side AI Engine • Public HDB & Private Non-Landed (Sep 2026 Data)</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle Theme" aria-label="Toggle Dark/Light Mode">🌙</button>
+      </div>
+    </header>
+
+    <!-- Segmented Navigation Tabs -->
+    <nav class="tabs-nav" role="tablist">
+      <button class="tab-btn active" data-tab="tab-predictor" role="tab" aria-selected="true">
+        <span style="font-size: 1.25rem;">🤖</span>
+        <div class="tab-btn-content">
+          <span class="tab-btn-title">Price Predictor</span>
+          <span class="tab-btn-tag">AI Prediction (XGBoost)</span>
+        </div>
+      </button>
+      <button class="tab-btn" data-tab="tab-map" role="tab" aria-selected="false">
+        <span style="font-size: 1.25rem;">🗺️</span>
+        <div class="tab-btn-content">
+          <span class="tab-btn-title">Transaction Maps</span>
+          <span class="tab-btn-tag">Actual Historical Data</span>
+        </div>
+      </button>
+      <button class="tab-btn" data-tab="tab-about" role="tab" aria-selected="false">
+        <span style="font-size: 1.25rem;">ℹ️</span>
+        <div class="tab-btn-content">
+          <span class="tab-btn-title">About & Methodology</span>
+          <span class="tab-btn-tag">Sources & Cutoffs</span>
+        </div>
+      </button>
+    </nav>
+
+    <!-- Tab 1: Price Predictor (AI Model Prediction) -->
+    <main id="tab-predictor" class="tab-content active" role="tabpanel">
+      <!-- Tab 1 Context Banner: AI Predicted Data -->
+      <div class="data-mode-banner banner-predicted">
+        <div class="banner-left">
+          <span class="banner-icon">🤖</span>
+          <div>
+            <div class="banner-title">
+              <span>Tab 1: AI Resale Valuation Engine</span>
+              <span class="pill-predicted-tag">XGBoost ML Models</span>
+            </div>
+            <div class="banner-sub">
+              Estimated property valuations calculated in-browser via trained decision trees. Not actual listings.
+            </div>
+          </div>
+        </div>
+        <div class="cutoff-badge-group">
+          <div class="cutoff-pill cutoff-pill-blue">
+            <span>🏢 HDB Model Cutoff:</span>
+            <strong>Sep 2026</strong>
+          </div>
+          <div class="cutoff-pill cutoff-pill-blue">
+            <span>🏙️ URA Condo Cutoff:</span>
+            <strong>Jun 2026</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="predictor-grid">
+        <!-- Input Form Card -->
+        <section class="card" aria-label="Property Valuation Parameters">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+            <div>
+              <h2 class="card-title" style="margin-bottom: 4px;">Property Details</h2>
+              <p class="card-subtitle" style="margin-bottom: 0;">Select property class or enter a postal code for valuation.</p>
+            </div>
+          </div>
+
+          <!-- Housing Category Switcher -->
+          <div class="prop-class-container">
+            <div class="property-class-toggle" role="group" aria-label="Select Housing Category">
+              <button type="button" class="prop-class-btn active" id="btnClassPublic" data-class="public">
+                <span class="prop-class-icon">🏢</span>
+                <span class="prop-class-info">
+                  <span class="prop-class-title">HDB Public Flats</span>
+                  <span class="prop-class-sub">9,818 Blocks • 26 Towns</span>
+                </span>
+              </button>
+              <button type="button" class="prop-class-btn" id="btnClassPrivate" data-class="private">
+                <span class="prop-class-icon">🏙️</span>
+                <span class="prop-class-info">
+                  <span class="prop-class-title">Private Non-Landed</span>
+                  <span class="prop-class-sub">10,085 Postals • 28 Districts</span>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Public HDB Form Section -->
+          <div id="section-public" class="property-form-section">
+            <!-- Postal Code Quick Lookup -->
+            <div class="form-group">
+              <div class="form-label-row">
+                <label for="postalInput" class="form-label">HDB Postal Code Lookup (Optional)</label>
+                <span id="postalBadge" class="form-badge" style="display: none;">✓ Found</span>
+              </div>
+              <input type="text" id="postalInput" class="form-input" placeholder="e.g. 530630 (auto-fills town & lease)" maxlength="6" inputmode="numeric">
+            </div>
+
+            <div class="form-row-2">
+              <!-- Town -->
+              <div class="form-group">
+                <label for="townSelect" class="form-label">Town</label>
+                <select id="townSelect" class="form-select">
+                  <option value="ANG MO KIO">Ang Mo Kio</option>
+                  <option value="BEDOK">Bedok</option>
+                  <option value="BISHAN" selected>Bishan</option>
+                  <option value="BUKIT BATOK">Bukit Batok</option>
+                  <option value="BUKIT MERAH">Bukit Merah</option>
+                  <option value="BUKIT PANJANG">Bukit Panjang</option>
+                  <option value="BUKIT TIMAH">Bukit Timah</option>
+                  <option value="CENTRAL AREA">Central Area</option>
+                  <option value="CHOA CHU KANG">Choa Chu Kang</option>
+                  <option value="CLEMENTI">Clementi</option>
+                  <option value="GEYLANG">Geylang</option>
+                  <option value="HOUGANG">Hougang</option>
+                  <option value="JURONG EAST">Jurong East</option>
+                  <option value="JURONG WEST">Jurong West</option>
+                  <option value="KALLANG/WHAMPOA">Kallang/Whampoa</option>
+                  <option value="MARINE PARADE">Marine Parade</option>
+                  <option value="PASIR RIS">Pasir Ris</option>
+                  <option value="PUNGGOL">Punggol</option>
+                  <option value="QUEENSTOWN">Queenstown</option>
+                  <option value="SEMBAWANG">Sembawang</option>
+                  <option value="SENGKANG">Sengkang</option>
+                  <option value="SERANGOON">Serangoon</option>
+                  <option value="TAMPINES">Tampines</option>
+                  <option value="TOA PAYOH">Toa Payoh</option>
+                  <option value="WOODLANDS">Woodlands</option>
+                  <option value="YISHUN">Yishun</option>
+                </select>
+              </div>
+
+              <!-- Flat Type -->
+              <div class="form-group">
+                <label for="flatTypeSelect" class="form-label">Flat Type</label>
+                <select id="flatTypeSelect" class="form-select">
+                  <option value="1 ROOM">1 Room</option>
+                  <option value="2 ROOM">2 Room</option>
+                  <option value="3 ROOM">3 Room</option>
+                  <option value="4 ROOM" selected>4 Room</option>
+                  <option value="5 ROOM">5 Room</option>
+                  <option value="EXECUTIVE">Executive</option>
+                  <option value="MULTI-GENERATION">Multi-Generation</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <!-- Flat Model -->
+              <div class="form-group">
+                <label for="flatModelSelect" class="form-label">Flat Model</label>
+                <select id="flatModelSelect" class="form-select">
+                  <option value="Model A" selected>Model A</option>
+                  <option value="Model A2">Model A2</option>
+                  <option value="Model A-Maisonette">Model A-Maisonette</option>
+                  <option value="Improved">Improved</option>
+                  <option value="Improved-Maisonette">Improved-Maisonette</option>
+                  <option value="New Generation">New Generation</option>
+                  <option value="Simplified">Simplified</option>
+                  <option value="Standard">Standard</option>
+                  <option value="Apartment">Apartment</option>
+                  <option value="Premium Apartment">Premium Apartment</option>
+                  <option value="Premium Apartment Loft">Premium Apartment Loft</option>
+                  <option value="Premium Maisonette">Premium Maisonette</option>
+                  <option value="DBSS">DBSS</option>
+                  <option value="Maisonette">Maisonette</option>
+                  <option value="Adjoined flat">Adjoined flat</option>
+                  <option value="Terrace">Terrace</option>
+                  <option value="2-room">2-room</option>
+                  <option value="3Gen">3Gen</option>
+                  <option value="Multi Generation">Multi Generation</option>
+                  <option value="Type S1">Type S1</option>
+                  <option value="Type S2">Type S2</option>
+                </select>
+              </div>
+
+              <!-- Lease Commencement Year -->
+              <div class="form-group">
+                <label for="leaseYearInput" class="form-label">Lease Commencement Year</label>
+                <input type="number" id="leaseYearInput" class="form-input" value="1995" min="1960" max="2026">
+              </div>
+            </div>
+          </div>
+
+          <!-- Private Housing Form Section -->
+          <div id="section-private" class="property-form-section" style="display: none;">
+            <!-- Private Non-Landed Postal Quick Lookup -->
+            <div class="form-group">
+              <div class="form-label-row">
+                <label for="condoPostalInput" class="form-label">Postal Code Lookup</label>
+                <span id="condoPostalBadge" class="form-badge" style="display: none;">✓ Found</span>
+              </div>
+              <input type="text" id="condoPostalInput" class="form-input" placeholder="e.g. 538804 (The Florida), 018987 (The Sail)" maxlength="6" inputmode="numeric">
+            </div>
+
+            <div class="form-row-2">
+              <!-- Project Name -->
+              <div class="form-group">
+                <label for="condoProjectInput" class="form-label">Project Name</label>
+                <input type="text" id="condoProjectInput" class="form-input" placeholder="e.g. The Florida, D'Leedon" value="THE FLORIDA" list="condoProjectList" autocomplete="off">
+                <datalist id="condoProjectList"></datalist>
+                <span id="condoProjectBadge" class="form-hint" style="display: none;"></span>
+              </div>
+
+              <!-- Property Type -->
+              <div class="form-group">
+                <label for="condoTypeSelect" class="form-label">Property Type</label>
+                <select id="condoTypeSelect" class="form-select">
+                  <option value="CONDOMINIUM" selected>Condominium</option>
+                  <option value="EXECUTIVE CONDOMINIUM">Executive Condominium (EC)</option>
+                  <option value="APARTMENT">Apartment</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <!-- Postal District -->
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="condoDistrictSelect" class="form-label">Postal District</label>
+                  <span id="condoSegmentBadge" class="segment-badge segment-ocr">OCR</span>
+                </div>
+                <select id="condoDistrictSelect" class="form-select">
+                  <option value="01">D01 - Raffles Place, Marina Bay, Cecil</option>
+                  <option value="02">D02 - Tanjong Pagar, Anson, Chinatown</option>
+                  <option value="03">D03 - Queenstown, Tiong Bahru, Alexandra</option>
+                  <option value="04">D04 - Telok Blangah, Harbourfront, Sentosa</option>
+                  <option value="05">D05 - Pasir Panjang, Clementi, West Coast</option>
+                  <option value="06">D06 - City Hall, High Street, Beach Road</option>
+                  <option value="07">D07 - Bugis, Middle Road, Golden Mile</option>
+                  <option value="08">D08 - Farrer Park, Little India, Serangoon Rd</option>
+                  <option value="09">D09 - Orchard, River Valley, Cairnhill</option>
+                  <option value="10">D10 - Tanglin, Holland Road, Bukit Timah</option>
+                  <option value="11">D11 - Newton, Novena, Thomson, Watten</option>
+                  <option value="12">D12 - Toa Payoh, Balestier, Serangoon</option>
+                  <option value="13">D13 - Macpherson, Braddell, Potong Pasir</option>
+                  <option value="14">D14 - Geylang, Paya Lebar, Eunos</option>
+                  <option value="15">D15 - East Coast, Marine Parade, Katong</option>
+                  <option value="16">D16 - Bedok, Upper East Coast, Siglap</option>
+                  <option value="17">D17 - Changi, Loyang</option>
+                  <option value="18">D18 - Tampines, Pasir Ris</option>
+                  <option value="19" selected>D19 - Hougang, Punggol, Sengkang, Serangoon Garden</option>
+                  <option value="20">D20 - Bishan, Ang Mo Kio, Thomson</option>
+                  <option value="21">D21 - Upper Bukit Timah, Clementi Park, Ulu Pandan</option>
+                  <option value="22">D22 - Jurong, Boon Lay, Tuas</option>
+                  <option value="23">D23 - Hillview, Dairy Farm, Bukit Panjang, Choa Chu Kang</option>
+                  <option value="24">D24 - Lim Chu Kang, Tengah</option>
+                  <option value="25">D25 - Woodlands, Admiralty, Kranji</option>
+                  <option value="26">D26 - Mandai, Upper Thomson, Springleaf</option>
+                  <option value="27">D27 - Yishun, Sembawang</option>
+                  <option value="28">D28 - Seletar, Yio Chu Kang</option>
+                </select>
+              </div>
+
+              <!-- Tenure -->
+              <div class="form-group">
+                <label for="condoTenureSelect" class="form-label">Tenure</label>
+                <select id="condoTenureSelect" class="form-select">
+                  <option value="99" selected>99-Year Leasehold</option>
+                  <option value="FREEHOLD">Freehold</option>
+                  <option value="999">999-Year Leasehold</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Condo Lease Year -->
+            <div class="form-group" id="condoLeaseGroup">
+              <label for="condoLeaseYearInput" class="form-label">Lease Commencement Year</label>
+              <input type="number" id="condoLeaseYearInput" class="form-input" value="2000" min="1960" max="2026">
+            </div>
+          </div>
+
+          <!-- Common Sliders: Floor Area & Storey -->
+          <!-- Floor Area Slider -->
+          <div class="form-group" style="margin-top: 14px;">
+            <div class="form-label-row">
+              <label for="floorAreaSlider" class="form-label">Floor Area</label>
+              <div class="unit-toggle-pills">
+                <button type="button" id="sqmBtn" class="unit-pill active">sqm</button>
+                <button type="button" id="sqftBtn" class="unit-pill">sqft</button>
+              </div>
+            </div>
+            <div class="slider-container">
+              <div class="form-label-row">
+                <span id="floorAreaVal" class="slider-val-display">90 sqm (969 sqft)</span>
+                <span id="floorAreaBounds" class="text-muted" style="font-size: 0.8rem;">28 to 215 sqm</span>
+              </div>
+              <input type="range" id="floorAreaSlider" min="28" max="215" step="1" value="90">
+            </div>
+          </div>
+
+          <!-- Storey Range Slider -->
+          <div class="form-group">
+            <div class="form-label-row">
+              <label for="storeySlider" class="form-label">Storey Level</label>
+              <span id="storeyVal" class="slider-val-display">Flr 8</span>
+            </div>
+            <input type="range" id="storeySlider" min="1" max="50" step="1" value="8">
+          </div>
+
+          <!-- Expected Future Sale Date -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="saleYearSelect" class="form-label" id="saleYearLabel">Target Sale Year</label>
+              <select id="saleYearSelect" class="form-select"></select>
+            </div>
+            <div class="form-group">
+              <label for="saleMonthSelect" class="form-label" id="saleMonthLabel">Target Sale Month</label>
+              <select id="saleMonthSelect" class="form-select"></select>
+            </div>
+          </div>
+          <div style="margin-top: -6px; margin-bottom: 14px;" id="saleDateHint">
+            <small style="font-size: 0.76rem; color: #94a3b8; display: flex; align-items: center; gap: 4px;">
+              <span id="saleDateHintIcon">🔮</span> <span id="saleDateHintText">Projecting future valuation post historical transaction cutoff (Sep 2026)</span>
+            </small>
+          </div>
+        </section>
+
+        <!-- Live Prediction Display Card -->
+        <aside class="prediction-display-card" aria-label="Valuation Summary">
+          <div class="price-hero-section">
+            <div id="priceHeroLabel" class="price-label">Estimated HDB Resale Value</div>
+            <div id="propertySummaryBadge" class="prop-summary-badge">🏢 4 Room • Model A • Bishan</div>
+            <div id="priceDisplay" class="price-number">S$ 737,000</div>
+            <div id="priceRangeDisplay" class="price-range-badge">Calculating estimate…</div>
+          </div>
+
+          <div class="metrics-mini-grid">
+            <div class="metric-box">
+              <div class="metric-box-title">Price / Sqm</div>
+              <div id="metricPsm" class="metric-box-value">S$ 8,189</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-box-title">Price / Sqft</div>
+              <div id="metricPsf" class="metric-box-value">S$ 761</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-box-title">Tenure Remaining</div>
+              <div id="metricLeaseRem" class="metric-box-value">68.0 yrs</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-box-title">Inference Latency</div>
+              <div id="metricLatency" class="metric-box-value">&lt; 1 ms</div>
+            </div>
+          </div>
+
+          <div class="engine-status-bar">
+            <div id="engineStatus"><span class="status-dot"></span>Client-Side Engine Active</div>
+            <span style="font-weight: 600;">100% Client-Side</span>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <!-- Tab 2: Interactive Transaction Map (Actual Historical Data) -->
+    <section id="tab-map" class="tab-content" role="tabpanel" aria-label="Transaction Map">
+      <!-- Tab 2 Context Banner: Actual Registered Data -->
+      <div class="data-mode-banner banner-actual">
+        <div class="banner-left">
+          <span class="banner-icon">📋</span>
+          <div>
+            <div class="banner-title">
+              <span>Tab 2: Historical Caveats & Registered Transactions</span>
+              <span class="pill-actual-tag">Actual Recorded Data</span>
+            </div>
+            <div class="banner-sub">
+              100% recorded transactions from official HDB registrations & URA caveats. Click any marker for up to 50 past caveats.
+            </div>
+          </div>
+        </div>
+        <div class="cutoff-badge-group">
+          <div class="cutoff-pill cutoff-pill-green">
+            <span>🏢 HDB Caveats:</span>
+            <strong>Jan 2017 – Sep 2026</strong>
+          </div>
+          <div class="cutoff-pill cutoff-pill-green">
+            <span>🏙️ URA Caveats:</span>
+            <strong>Jun 2021 – Jun 2026</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding: 20px; margin-bottom: 20px;">
+        <div class="map-controls-row">
+          <div>
+            <h2 class="card-title" id="mapTitle" style="margin-bottom: 4px;">🗺️ Resale Transaction Maps</h2>
+            <p class="card-subtitle" id="mapSubtitle" style="margin-bottom: 0;">Click on any marker across Singapore to inspect actual registered historical transactions and caveats.</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <!-- Map Category Switcher -->
+            <div class="map-class-toggle" role="group" aria-label="Select Housing Map Category">
+              <button type="button" class="map-toggle-btn active" id="btnMapPublic" data-map="public">
+                <span>🏢</span>
+                <span>HDB Public Flats</span>
+              </button>
+              <button type="button" class="map-toggle-btn" id="btnMapPrivate" data-map="private">
+                <span>🏙️</span>
+                <span>Private Condos</span>
+              </button>
+            </div>
+            <a id="openMapNewTabBtn" href="pipeline_public/hdb_resale_price_map_clickable.html" target="_blank" rel="noopener noreferrer" class="project-link-card" style="padding: 8px 14px; font-size: 0.85rem;">
+              Open Map in New Tab ↗
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Public HDB Map Frame -->
+      <div id="map-frame-public-wrapper" class="map-frame-wrapper">
+        <iframe id="mapFramePublic" src="pipeline_public/hdb_resale_price_map_clickable.html" class="map-frame" title="Interactive Singapore HDB Resale Map" allow="geolocation" loading="lazy"></iframe>
+      </div>
+
+      <!-- Private Non-Landed Map Frame -->
+      <div id="map-frame-private-wrapper" class="map-frame-wrapper" style="display: none;">
+        <iframe id="mapFramePrivate" src="pipeline_private/condo_resale_price_map_clickable.html" class="map-frame" title="Interactive Singapore Private Condominium Resale Map" allow="geolocation" loading="lazy"></iframe>
+      </div>
+    </section>
+
+    <!-- Tab 3: About & Architecture -->
+    <section id="tab-about" class="tab-content" role="tabpanel" aria-label="About the Project">
+      <!-- Data Cutoff Dates Summary Card -->
+      <div class="card" style="margin-bottom: 28px;">
+        <h2 class="card-title">📅 Data Cutoff Dates & System Architecture</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+          This application clearly separates <strong>AI model predictions (XGBoost)</strong> from <strong>actual recorded transactions</strong>. Below are the primary sources and dataset cutoff dates:
+        </p>
+        <div style="overflow-x: auto;">
+          <table class="cutoff-summary-table">
+            <thead>
+              <tr>
+                <th>View / Tab</th>
+                <th>Data Nature</th>
+                <th>Housing Class</th>
+                <th>Source Agency</th>
+                <th>Records</th>
+                <th>Historical Coverage</th>
+                <th>Latest Trained Cutoff</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Tab 1: Price Predictor</strong></td>
+                <td><span class="pill-predicted-tag">AI Prediction</span></td>
+                <td>HDB Public Flats</td>
+                <td>Housing & Development Board</td>
+                <td>239,977</td>
+                <td>Jan 2017 – Sep 2026</td>
+                <td><strong style="color: var(--brand-primary);">September 2026</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Tab 1: Price Predictor</strong></td>
+                <td><span class="pill-predicted-tag">AI Prediction</span></td>
+                <td>Private Condos / ECs</td>
+                <td>Urban Redevelopment Authority</td>
+                <td>71,538</td>
+                <td>Jun 2021 – Jun 2026</td>
+                <td><strong style="color: var(--brand-primary);">June 2026</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Tab 2: Transaction Maps</strong></td>
+                <td><span class="pill-actual-tag">Actual Data</span></td>
+                <td>HDB Block Popups</td>
+                <td>Data.gov.sg (HDB)</td>
+                <td>9,818 Blocks</td>
+                <td>Jan 2017 – Sep 2026</td>
+                <td><strong style="color: var(--accent-success);">September 2026</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Tab 2: Transaction Maps</strong></td>
+                <td><span class="pill-actual-tag">Actual Data</span></td>
+                <td>Condo Popups (URA Caveats)</td>
+                <td>URA Data Service / Ryeo</td>
+                <td>83,848 Caveats</td>
+                <td>Jun 2021 – Jun 2026</td>
+                <td><strong style="color: var(--accent-success);">June 2026</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 28px;">
+        <h2 class="card-title">🤖 Machine Learning Models & Independent Benchmarks</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 20px;">
+          To ensure reliable, transparent valuations, this application maintains <strong>two distinct, independently trained XGBoost models</strong> rather than blending them together. Each is trained exclusively on its official agency dataset and validated on <strong>future sales it never saw</strong> &mdash; a chronological holdout, not a random split.
+        </p>
+        <p style="color: var(--text-secondary); margin-bottom: 20px;">
+          The app produces two kinds of estimate. A <strong>comparable valuation</strong> prices a property at the current market level, and the accuracy figures below measure exactly that. An <strong>index-adjusted forward valuation</strong> takes that result and scales it by an official published price index to reach a future date &mdash; the XGBoost model itself never forecasts, since decision trees cannot extrapolate beyond the years they were trained on. Projected estimates are labelled with the growth rate and horizon they assume.
+        </p>
+
+        <!-- Model 1: HDB Public Flats -->
+        <div style="background: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: var(--radius-md); padding: 20px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.4rem;">🏢</span>
+              <div>
+                <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">Public Housing (HDB Flat Resale Model)</h3>
+                <span style="font-size: 0.78rem; color: var(--text-secondary);">Source: Housing & Development Board (Data.gov.sg) • <span data-metric="hdb.records">239,977</span> Transactions</span>
+              </div>
+            </div>
+            <div class="cutoff-pill cutoff-pill-blue">
+              <span>Latest Cutoff:</span>
+              <strong>September 2026</strong>
+            </div>
+          </div>
+          <div class="about-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--brand-primary);" data-metric="hdb.r2">--</div>
+              <strong data-metric="hdb.r2_label">R² Score</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);"><span data-metric="hdb.r2_note">Share of HDB price variance explained across all 26 towns.</span></p>
+            </div>
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--brand-primary);" data-metric="hdb.mae">--</div>
+              <strong>Mean Absolute Error (MAE)</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);"><span data-metric="hdb.mae_note">Measured on a held-out future year.</span></p>
+            </div>
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--brand-primary);" data-metric="hdb.trees">--</div>
+              <strong>Model Complexity</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);"><span data-metric="hdb.features_note">Spatial, flat &amp; transport features; max tree depth 8.</span></p>
+            </div>
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--brand-primary);">9,818 Blocks</div>
+              <strong>Postal Catalog</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);">Instant lookup of town, lease commence date & coordinates.</p>
+            </div>
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--brand-primary);" data-metric="hdb.growth">--</div>
+              <strong>Forecast Growth Rate</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);"><span data-metric="hdb.growth_note">Applied to project prices beyond the training data.</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Model 2: Private Non-Landed -->
+        <div style="background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md); padding: 20px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.4rem;">🏙️</span>
+              <div>
+                <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">Private Non-Landed Model</h3>
+                <span style="font-size: 0.78rem; color: var(--text-secondary);">Source: Urban Redevelopment Authority (URA Caveats) • <span data-metric="condo.records">71,538</span> Non-Landed Resale Records</span>
+              </div>
+            </div>
+            <div class="cutoff-pill cutoff-pill-green">
+              <span>Latest Cutoff:</span>
+              <strong>June 2026</strong>
+            </div>
+          </div>
+          <div class="about-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--accent-success);" data-metric="condo.r2">--</div>
+              <strong data-metric="condo.r2_label">R² Score</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);"><span data-metric="condo.r2_note">Share of private resale variance explained across districts.</span></p>
+            </div>
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--accent-success);" data-metric="condo.mae">--</div>
+              <strong>Mean Absolute Error (MAE)</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);"><span data-metric="condo.mae_note">Measured on a held-out future year.</span></p>
+            </div>
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--accent-success);" data-metric="condo.trees">--</div>
+              <strong>Model Complexity</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);"><span data-metric="condo.features_note">Engineered features (project, tenure, lease, storey, segment).</span></p>
+            </div>
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--accent-success);">10,085 Postals</div>
+              <strong>Postal Catalog</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);">2,431 non-landed developments mapped: condominiums, apartments and ECs. Landed property is not covered.</p>
+            </div>
+            <div class="about-metric-card">
+              <div class="about-metric-num" style="color: var(--accent-success);" data-metric="condo.growth">--</div>
+              <strong>Forecast Growth Rate</strong>
+              <p style="font-size: 0.82rem; color: var(--text-muted);"><span data-metric="condo.growth_note">Applied to project prices beyond the training data.</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shared In-Browser Inference Engine -->
+        <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <span style="font-size: 1.3rem;">⚡</span>
+            <div>
+              <h3 style="font-size: 0.98rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">Shared Client-Side In-Browser Execution Engine</h3>
+              <span style="font-size: 0.78rem; color: var(--text-secondary);">Pure JavaScript decision-tree traversal • 0 server cold starts • 100% private</span>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+            <div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+              <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);">&lt; 1 ms</div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 600;">Inference Latency</div>
+            </div>
+            <div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+              <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);">19,903</div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 600;">Total Mapped Postal Codes</div>
+            </div>
+            <div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+              <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);">0 API Calls</div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 600;">Offline Capable Execution</div>
+            </div>
+            <div style="padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+              <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);" data-metric="bands">--</div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 600;">Indicative Valuation Range</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 28px;">
+        <h2 class="card-title">📚 Official Data Sources & Attribution</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+          This application operates on official Singapore public housing records and real estate caveat registrations:
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px;">
+            <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 6px;">🏢 HDB Resale Flat Prices</h3>
+            <p style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.45;">
+              Historical resale transactions from January 2017 onwards, published by the <strong>Housing & Development Board (HDB)</strong> via Data.gov.sg under the <a href="https://data.gov.sg/open-data-licence" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">Singapore Open Data Licence</a>.
+            </p>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">239,977 records • 9,818 HDB postal codes mapped</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px;">
+            <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 6px;">🏙️ URA Private Resale Caveats</h3>
+            <p style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.45;">
+              Private residential caveats sourced from the <strong>Urban Redevelopment Authority (URA) Real Estate Data Service</strong>, via the <a href="https://www.kaggle.com/datasets/y2h1987/singapore-property-transactions-hdb-private/data" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">Singapore Property Transactions Dataset</a> by Ryeo (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">CC BY 4.0</a>).
+            </p>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">83,848 resale caveats • 2,430 condo developments</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">PropTech AI Ecosystem</h2>
+        <p style="color: var(--text-secondary);">Explore the other open-source projects in this Singapore housing intelligence suite:</p>
+        <div class="project-links-list">
+          <a href="https://github.com/seehiong/autonomous-hdb-deepagents" target="_blank" rel="noopener noreferrer" class="project-link-card">
+            <div>
+              <div class="project-link-name">Autonomous HDB DeepAgents ↗</div>
+              <div class="project-link-desc">Multi-agent geospatial + resale price intelligence system powered by DeepAgents and LangGraph.</div>
+            </div>
+            <span>★ GitHub</span>
+          </a>
+          <a href="https://github.com/seehiong/smartflat-ai" target="_blank" rel="noopener noreferrer" class="project-link-card">
+            <div>
+              <div class="project-link-name">SmartFlat AI ↗</div>
+              <div class="project-link-desc">Multi-agent property advisor leveraging AWS Bedrock AgentCore and PostgreSQL routing.</div>
+            </div>
+            <span>★ GitHub</span>
+          </a>
+          <a href="https://github.com/seehiong/hdb-price-predictor" target="_blank" rel="noopener noreferrer" class="project-link-card">
+            <div>
+              <div class="project-link-name">HDB Price Predictor Repository ↗</div>
+              <div class="project-link-desc">Open-source codebase for this static web application and automated Python ETL pipeline.</div>
+            </div>
+            <span>★ GitHub</span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

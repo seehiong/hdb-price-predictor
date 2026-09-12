@@ -1,0 +1,45 @@
+{
+  "condo": {
+    "label": "Private Non-Landed Model (Condo, Apartment, EC)",
+    "source": "Urban Redevelopment Authority (URA Caveats)",
+    "records": 71538,
+    "features": 45,
+    "trees": 77,
+    "projects": 2204,
+    "r2": 0.9597,
+    "mae": 136553.2,
+    "rmse": 269177.82,
+    "mape": 6.27,
+    "validation": "chronological (validate on 2026+)",
+    "holdout_samples": 5458,
+    "latest_year": 2026,
+    "annual_growth": 0.073128,
+    "segment_growth": {
+      "CCR": 0.035272,
+      "OCR": 0.074701,
+      "RCR": 0.058042
+    },
+    "index_source": "URA Property Price Index of Non-landed Properties by Locality (CCR/RCR/OCR), quarterly",
+    "forecast_base_year": 2025,
+    "generated_at": "2026-09-12"
+  },
+  "generated_at": "2026-09-12",
+  "hdb": {
+    "label": "Public Housing (HDB Flat Resale Model)",
+    "source": "Housing & Development Board (Data.gov.sg)",
+    "records": 240345,
+    "features": 60,
+    "trees": 599,
+    "r2": 0.9553,
+    "mae": 31089.56,
+    "rmse": 45074.6,
+    "mape": 4.63,
+    "validation": "chronological (validate on 2026+)",
+    "holdout_samples": 18278,
+    "latest_year": 2026,
+    "annual_growth": 0.067346,
+    "index_source": "HDB Resale Price Index (1Q2009=100), quarterly",
+    "forecast_base_year": 2025,
+    "generated_at": "2026-09-12"
+  }
+}
